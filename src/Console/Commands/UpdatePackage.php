@@ -36,8 +36,8 @@ class UpdatePackage extends Command
     public function handle(): void
     {
         $this->info('Swifta Payment Provider Integration Updating Started\n');
-      /*  $this->removeOldVersionOfPackage();
-        $this->installNewVersionOfPackage();*/
+        $this->removeOldVersionOfPackage();
+        $this->installNewVersionOfPackage();
         $this->deleteMigration($this->fileSystem);
         $this->publishConfigurations();
         $this->publishMigrationsAgain();
