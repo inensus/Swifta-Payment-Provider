@@ -7,12 +7,13 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\ServiceProvider;
 use Inensus\SwiftaPaymentProvider\Console\Commands\InstallPackage;
+use Inensus\SwiftaPaymentProvider\Console\Commands\TransactionStatusChecker;
 use Inensus\SwiftaPaymentProvider\Console\Commands\UpdatePackage;
 use Inensus\SwiftaPaymentProvider\Http\Middleware\SwiftaTransactionRequest;
 use Inensus\SwiftaPaymentProvider\Http\Middleware\SwiftaValidationBeforeTransactionRequest;
 use Inensus\SwiftaPaymentProvider\Http\Middleware\SwiftaValidationRequest;
 use Inensus\SwiftaPaymentProvider\Models\SwiftaTransaction;
-
+use Illuminate\Console\Scheduling\Schedule;
 
 class SwiftaServiceProvider extends ServiceProvider
 {
@@ -22,13 +23,15 @@ class SwiftaServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishConfigFiles();
             $this->publishMigrations($filesystem);
-            $this->commands([InstallPackage::class, UpdatePackage::class]);
+            $this->commands([InstallPackage::class, UpdatePackage::class,TransactionStatusChecker::class]);
         }
         Relation::morphMap(
             [
                 'swifta_transaction' => SwiftaTransaction::class,
             ]
         );
+        $this->app->make(Schedule::class)->command('swifta-payment-provider:transactionStatusCheck')->dailyAt('00:00')
+            ->appendOutputTo(storage_path('logs/cron.log'));
     }
 
     public function register()
