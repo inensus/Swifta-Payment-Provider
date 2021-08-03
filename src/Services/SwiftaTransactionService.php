@@ -13,6 +13,8 @@ use App\Models\Person\Person;
 use App\Models\Transaction\Transaction;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Inensus\SwiftaPaymentProvider\Models\SwiftaTransaction;
+use Illuminate\Support\Facades\Log;
+use App\Models\Transaction\TransactionConflicts;
 
 class SwiftaTransactionService
 {
@@ -60,14 +62,13 @@ class SwiftaTransactionService
     {
         $meterSerial = $data['meter_number'];
         try {
-
             $sender = $this->getTransactionSender($meterSerial);
             return $this->transaction->newQuery()->make([
                 'amount' => (int)$data['amount'],
                 'sender' => $sender,
                 'message' => $data['meter_number'],
                 'type' => 'energy',
-                'original_transaction_type' => 'mesomb_transaction',
+                'original_transaction_type' => 'swifta_transaction',
             ]);
         } catch (\Exception $exception) {
             throw  new \Exception($exception->getMessage());
@@ -158,9 +159,23 @@ class SwiftaTransactionService
         ]);
     }
 
+    public function setUnProcessedTransactionsStatusAsRejected()
+    {
+        $this->swiftaTransaction->newQuery()->where('status', -2)->get()->each(function ($transaction) {
+            $transaction->update([
+                'status' => -1
+            ]);
+            $message= "The transaction that stayed as Unprocessed more than 24 hours, updated to canceled.";
+            $conflict = new TransactionConflicts();
+            $conflict->state = $message;
+            $conflict->transaction()->associate($transaction);
+            $conflict->save();
+            Log::debug($message." Transaction Id : {$transaction->id}");
+        });
+    }
+
     private function processTransaction(TransactionDataContainer $transactionData)
     {
-
         $transactionData = $this->payAccessRate($transactionData);
         return $this->handleSocialTariffPiggyBankSavingsIfMeterHas($transactionData);
     }

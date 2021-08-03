@@ -66,7 +66,7 @@ class SwiftaTransactionProvider implements ITransactionProvider
                 SmsConfigs::class
             )->allOnConnection('redis')->onQueue(\config('services.queues.sms'));
         } else {
-            Log::critical('swifta transaction is been cancelled',);
+            Log::debug('swifta transaction is been cancelled',);
             $this->swiftaTransaction->status = -1;
             $this->swiftaTransaction->save();
         }
@@ -112,14 +112,18 @@ class SwiftaTransactionProvider implements ITransactionProvider
         // TODO: Implement init() method.
     }
 
-    public function addConflict(?string $message): void
+    public function conflict(?string $message,$transaction): void
     {
+        $this->swiftaTransaction = $transaction->originalTransaction()->first();
         $conflict = new TransactionConflicts();
         $conflict->state = $message;
         $conflict->transaction()->associate($this->swiftaTransaction);
         $conflict->save();
     }
-
+    public function addConflict(?string $message): void
+    {
+        // TODO: Implement getTransaction() method.
+    }
     public function getTransaction(): Transaction
     {
         // TODO: Implement getTransaction() method.
